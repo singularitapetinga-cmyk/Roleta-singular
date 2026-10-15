@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Singular | Roleta de Aniversário</title>
+<style>
+:root{--y:#f5c400;--b:#171717;--bg:#f4f4f4;--muted:#666;--line:#e5e5e5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--b)}
+header{background:var(--b);color:white;padding:20px 14px;text-align:center;border-bottom:6px solid var(--y)}
+header h1{margin:0;font-size:clamp(20px,5vw,30px)}header p{margin:7px 0 0}
+main{max-width:920px;margin:18px auto;padding:0 12px 30px}.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab{flex:1;background:#ddd;color:#222}.tab.active{background:var(--y);color:#111}
+.card{background:white;padding:17px;border-radius:15px;box-shadow:0 3px 12px #0000000b;margin-bottom:14px}
+h2{font-size:20px;margin:0 0 12px}label{display:block;font-size:14px;font-weight:bold;margin:11px 0 5px}
+input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:9px;background:white}
+button{border:0;border-radius:10px;padding:12px 14px;font-weight:bold;cursor:pointer}.yellow{background:var(--y);color:#111}.black{background:var(--b);color:white}.light{background:#eee;color:#111}
+.wheelbox{display:grid;justify-items:center;gap:10px}.pointer{font-size:28px;color:var(--y);text-shadow:0 1px 2px #000;margin-bottom:-20px;z-index:2}
+canvas{width:min(86vw,390px);height:min(86vw,390px);max-width:390px;max-height:390px}
+#result{font-size:22px;font-weight:bold;text-align:center;min-height:28px}
+.note{font-size:13px;line-height:1.5;color:var(--muted)}.status{padding:10px;background:#fff8d9;border-radius:9px;font-size:14px;line-height:1.45}
+.hidden{display:none!important}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.prize{display:grid;grid-template-columns:1fr 86px 86px;gap:7px;margin:8px 0;align-items:center}.prize small{font-size:12px;color:#555}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+@media(max-width:540px){.grid2{grid-template-columns:1fr}.prize{grid-template-columns:1fr 72px 72px}table{font-size:12px}}
+</style>
+</head>
+<body>
+<header><h1>SINGULAR MÓVEIS & COLCHÕES</h1><p>Roleta de Aniversário • Cliente chama Cliente</p></header>
+<main>
+<div class="tabs">
+<button class="tab active" id="clientTab">🎡 Área do cliente</button>
+<button class="tab" id="adminTab">🔐 Área do administrador</button>
+</div>
+
+<section id="clientArea">
+<div class="card">
+<h2>Gire e descubra seu prêmio!</h2>
+<p class="note">Após a compra, peça ao vendedor para liberar sua participação. Informe o mesmo identificador usado no atendimento.</p>
+<label for="customerId">CPF ou WhatsApp</label><input id="customerId" placeholder="Digite CPF ou WhatsApp" autocomplete="off">
+<label for="saleCode">Código da compra</label><input id="saleCode" placeholder="Código informado pelo vendedor" autocomplete="off">
+<button class="yellow" id="checkBtn" style="width:100%;margin-top:12px">Verificar participação liberada</button>
+<p id="clientStatus" class="status">A participação ainda não foi verificada.</p>
+<div class="wheelbox"><div class="pointer">▼</div><canvas id="wheel" width="600" height="600"></canvas>
+<button class="yellow" id="spinBtn" disabled>GIRAR A ROLETA</button><div id="result" aria-live="polite">Boa sorte! 💛</div></div>
+</div>
+<div class="card"><h2>Condições da campanha</h2><p id="publicRules" class="note">Uma participação por cliente, mediante validação da compra e liberação do vendedor. O prêmio máximo é limitado a uma ocorrência. Consulte as condições na loja.</p></div>
+</section>
+
+<section id="adminArea" class="hidden">
+<div class="card" id="loginCard">
+<h2>Acesso do administrador</h2><p class="note">Demonstração local. PIN de teste: <b>1234</b>. Em uma versão publicada, o acesso precisa ser protegido no servidor; não use este PIN em produção.</p>
+<label for="pin">PIN de demonstração</label><input id="pin" type="password" inputmode="numeric" placeholder="Digite o PIN">
+<button class="black" id="loginBtn" style="margin-top:12px">Entrar</button><p id="loginStatus" class="note"></p>
+</div>
+<div id="adminPanel" class="hidden">
+<div class="card">
+<h2>Configurações da campanha</h2>
+<label for="rulesEdit">Regras mostradas ao cliente</label><textarea id="rulesEdit" rows="3"></textarea>
+<h2 style="margin-top:18px">Prêmios da roleta</h2>
+<p class="note">A quantidade 0 significa “sem limite” neste protótipo. Marque “Único” para o prêmio máximo aparecer visualmente, mas ficar bloqueado depois de ganho nesta sessão/dispositivo. Alterações aqui ficam apenas neste navegador.</p>
+<div id="prizeEditor"></div>
+<div class="grid2"><button class="light" id="addPrize">+ Adicionar prêmio</button><button class="yellow" id="saveSettings">Salvar configurações</button></div>
+</div>
+<div class="card">
+<h2>Liberar participação</h2>
+<p class="note">Confirme a compra presencialmente antes de liberar. Neste protótipo, a autorização é local e não sincroniza entre aparelhos.</p>
+<div class="grid2"><div><label for="adminCustomer">CPF ou WhatsApp</label><input id="adminCustomer" placeholder="Identificador do cliente"></div><div><label for="adminSale">Código da compra</label><input id="adminSale" placeholder="Código da venda"></div></div>
+<button class="black" id="releaseBtn" style="width:100%;margin-top:12px">Liberar uma tentativa</button><p id="releaseStatus" class="status">Nenhuma participação liberada.</p>
+</div>
+<div class="card">
+<h2>Histórico neste aparelho</h2><div id="history"></div>
+<button class="light" id="logoutBtn" style="margin-top:12px">Sair da área administrativa</button>
+</div>
+</div>
+</section>
+<div class="card"><p class="note"><b>Importante:</b> este arquivo é um protótipo editável para testar o visual e o fluxo. Os dados ficam no navegador e podem ser apagados ou alterados; não existe bloqueio real entre celulares diferentes. Para a campanha oficial, será necessário publicar uma aplicação com servidor e banco de dados, autenticação de administrador e controle central do prêmio único. Verifique também as exigências legais aplicáveis a promoções comerciais no Brasil.</p></div>
+</main>
+<script>
+const initial=[
+{name:"5% de desconto",qty:0,unique:false},
+{name:"10% de desconto",qty:0,unique:false},
+{name:"R$ 30 em vale-compras",qty:0,unique:false},
+{name:"Brinde especial",qty:0,unique:false},
+{name:"Desconto em colchões",qty:0,unique:false},
+{name:"50% de desconto",qty:0,unique:false},
+{name:"100% DE DESCONTO — PRÊMIO ÚNICO",qty:1,unique:true}
+];
+const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+let prizes=read("singular2_prizes",initial.map(p=>({...p})));
+let history=read("singular2_history",[]);
+let releases=read("singular2_releases",{});
+let usedUnique=read("singular2_usedUnique",[]);
+let authorized=null,spinning=false;
+const $=id=>document.getElementById(id);
+const canvas=$("wheel"),ctx=canvas.getContext("2d");
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function switchTab(which){const admin=which==="admin";$("clientArea").classList.toggle("hidden",admin);$("adminArea").classList.toggle("hidden",!admin);$("clientTab").classList.toggle("active",!admin);$("adminTab").classList.toggle("active",admin)}
+$("clientTab").onclick=()=>switchTab("client");$("adminTab").onclick=()=>switchTab("admin");
+function draw(){let n=Math.max(prizes.length,1),cx=300,cy=300,r=282;ctx.clearRect(0,0,600,600);
+for(let i=0;i<n;i++){let a=-Math.PI/2+i*2*Math.PI/n,b=a+2*Math.PI/n;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,b);ctx.closePath();ctx.fillStyle=i%2?"#171717":"#f5c400";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.save();ctx.translate(cx,cy);ctx.rotate(a+(b-a)/2);ctx.textAlign="right";ctx.fillStyle=i%2?"#fff":"#171717";ctx.font="bold 18px Arial";let label=prizes[i]?.name||"Prêmio";if(label.length>28)label=label.slice(0,26)+"…";ctx.fillText(label,r-18,6);ctx.restore()}
+ctx.beginPath();ctx.arc(cx,cy,48,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#f5c400";ctx.lineWidth=8;ctx.stroke();ctx.fillStyle="#171717";ctx.textAlign="center";ctx.font="bold 17px Arial";ctx.fillText("SINGULAR",cx,cy+6)}
+function renderEditor(){$("prizeEditor").innerHTML="";prizes.forEach((p,i)=>{let row=document.createElement("div");row.className="prize";row.innerHTML=`<input aria-label="Nome do prêmio" value="${safe(p.name)}"><input aria-label="Quantidade" type="number" min="0" value="${Number(p.qty)||0}"><button class="light">${p.unique?"Único":"Normal"}</button>`;row.children[0].oninput=e=>{prizes[i].name=e.target.value;draw()};row.children[1].onchange=e=>prizes[i].qty=Math.max(0,Number(e.target.value)||0);row.children[2].onclick=()=>{prizes[i].unique=!prizes[i].unique;renderEditor()};$("prizeEditor").appendChild(row)})}
+function save(){localStorage.setItem("singular2_prizes",JSON.stringify(prizes));localStorage.setItem("singular2_history",JSON.stringify(history));localStorage.setItem("singular2_releases",JSON.stringify(releases));localStorage.setItem("singular2_usedUnique",JSON.stringify(usedUnique))}
+function renderHistory(){if(!history.length){$("history").innerHTML='<p class="note">Nenhum prêmio registrado neste aparelho.</p>';return}let rows=history.slice().reverse().map(h=>`<tr><td>${safe(h.id)}</td><td>${safe(h.sale)}</td><td>${safe(h.prize)}</td><td>${safe(h.date)}</td></tr>`).join("");$("history").innerHTML=`<table><thead><tr><th>Cliente</th><th>Compra</th><th>Prêmio</th><th>Data</th></tr></thead><tbody>${rows}</tbody></table>`}
+$("loginBtn").onclick=()=>{if($("pin").value==="1234"){$("loginCard").classList.add("hidden");$("adminPanel").classList.remove("hidden");$("rulesEdit").value=$("publicRules").textContent;renderEditor();renderHistory();$("loginStatus").textContent=""}else $("loginStatus").textContent="PIN incorreto. Para teste, use 1234."};
+$("logoutBtn").onclick=()=>{$("adminPanel").classList.add("hidden");$("loginCard").classList.remove("hidden");$("pin").value=""};
+$("addPrize").onclick=()=>{prizes.push({name:"Novo prêmio",qty:0,unique:false});renderEditor();draw()};
+$("saveSettings").onclick=()=>{$("publicRules").textContent=$("rulesEdit").value;localStorage.setItem("singular2_rules",$("rulesEdit").value);save();draw();alert("Configurações salvas neste navegador.")};
+function norm(s){return String(s||"").replace(/\s/g,"").toLowerCase()}
+$("releaseBtn").onclick=()=>{let id=norm($("adminCustomer").value),sale=$("adminSale").value.trim();if(!id||!sale){$("releaseStatus").textContent="Preencha o identificador e o código da compra.";return}if(history.some(h=>h.key===id)||releases[id]?.used){$("releaseStatus").textContent="Este identificador já participou neste aparelho.";return}releases[id]={sale,used:false};save();$("releaseStatus").textContent="Tentativa liberada para a compra "+sale+" neste aparelho."};
+$("checkBtn").onclick=()=>{let id=norm($("customerId").value),sale=$("saleCode").value.trim();if(!id||!sale){$("clientStatus").textContent="Informe CPF/WhatsApp e o código da compra.";return}if(history.some(h=>h.key===id)){authorized=null;$("spinBtn").disabled=true;$("clientStatus").textContent="Já existe uma participação registrada para este identificador neste aparelho.";return}if(!releases[id]||releases[id].sale!==sale||releases[id].used){authorized=null;$("spinBtn").disabled=true;$("clientStatus").textContent="Não encontramos uma liberação correspondente neste aparelho. Peça ao vendedor para conferir.";return}authorized={key:id,sale};$("spinBtn").disabled=false;$("clientStatus").textContent="Participação liberada para esta compra. Você tem uma tentativa.";};
+function choosePrize(){let candidates=[];prizes.forEach((p,i)=>{if(!p.name.trim())return;if(p.unique&&usedUnique.includes(i))return;if(p.qty>0&&p.qty<=0)return; // qty 0 means unlimited in this prototype
+candidates.push(i)});if(!candidates.length)return -1;return candidates[Math.floor(Math.random()*candidates.length)]}
+$("spinBtn").onclick=()=>{if(spinning||!authorized)return;let idx=choosePrize();if(idx<0){$("result").textContent="Não há prêmios disponíveis.";return}spinning=true;$("spinBtn").disabled=true;let turns=6+Math.random()*4;canvas.style.transition="transform 3s cubic-bezier(.12,.7,.15,1)";canvas.style.transform=`rotate(${turns*2*Math.PI+Math.random()*2*Math.PI}rad)`;
+setTimeout(()=>{let p=prizes[idx];$("result").textContent="Você ganhou: "+p.name+"!";if(p.unique)usedUnique.push(idx);if(p.qty>0)p.qty--;let item={key:authorized.key,id:authorized.key,sale:authorized.sale,prize:p.name,date:new Date().toLocaleString("pt-BR")};history.push(item);if(releases[authorized.key])releases[authorized.key].used=true;authorized=null;save();renderHistory();renderEditor();canvas.style.transition="none";canvas.style.transform="";draw();$("clientStatus").textContent="Participação concluída. Apresente o resultado ao vendedor.";spinning=false;},3100)};
+$("publicRules").textContent=localStorage.getItem("singular2_rules")||$("publicRules").textContent;
+renderEditor();renderHistory();draw();
+</script>
+</body></html>
